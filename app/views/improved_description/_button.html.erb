@@ -1,0 +1,106 @@
+<% if local_assigns[:position] == 'toolbar' %>
+<%= stylesheet_link_tag 'improved_description', plugin: :description_ai %>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const toolbar = document.querySelector(".jstElements");
+      if (toolbar) {
+        // Butonları oluştur
+        const sendButton = document.createElement("button");
+        sendButton.id = "send-description-btn";
+        sendButton.classList.add("custom-icon-button");
+
+        const prevButton = document.createElement("button");
+        prevButton.id = "prev-description-btn";
+        prevButton.innerText = "<";
+        prevButton.disabled = true;
+
+        const nextButton = document.createElement("button");
+        nextButton.id = "next-description-btn";
+        nextButton.innerText = ">";
+        nextButton.disabled = true;
+
+        // Butonları toolbara ekle
+        toolbar.appendChild(sendButton);
+        toolbar.appendChild(prevButton);
+        toolbar.appendChild(nextButton);
+
+        // JavaScript işlemleri burada tanımlanabilir
+        let descriptions = [];
+        let currentIndex = 0;
+
+        sendButton.addEventListener("click", function() {
+        const descriptionField = document.querySelector('#issue_description');
+        const issueId = "<%= @issue.id %>";
+
+        // Description alanı boşsa uyarı ver
+        if (!descriptionField || descriptionField.value.trim() === "") {
+          alert("Description alanı boş olamaz.");
+          return;
+        }
+
+        // İstek gönderildiğinde kullanıcının bilgilendirilmesi
+        sendButton.disabled = true;
+        //sendButton.innerText = "Sending...";
+
+        fetch('/improved_description/improve_description', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': '<%= form_authenticity_token %>'
+          },
+          body: JSON.stringify({ issue_id: issueId, description: descriptionField.value })
+        })
+        .then(response => response.json())
+        .then(data => {
+          sendButton.disabled = false;
+          sendButton.innerText = "Send";
+          if (data.success) {
+            descriptions = data.descriptions || []; // Geri dönen descriptions arrayini alın
+            currentIndex = 0;
+            if (descriptions.length > 0) {
+              updateDescription();
+              updateNavigationButtons();
+              alert("Description options received. Use arrows to navigate.");
+            } else {
+              alert("No descriptions returned.");
+            }
+          } else {
+            alert('Failed to improve description: ' + data.message);
+          }
+        })
+        .catch(error => {
+          sendButton.disabled = false;
+          sendButton.innerText = "Send";
+          console.error('Error:', error);
+          alert("An error occurred while improving the description.");
+        });
+      });
+
+      prevButton.addEventListener("click", function() {
+        if (currentIndex > 0) {
+          currentIndex--;
+          updateDescription();
+          updateNavigationButtons();
+        }
+      });
+
+      nextButton.addEventListener("click", function() {
+        if (currentIndex < descriptions.length - 1) {
+          currentIndex++;
+          updateDescription();
+          updateNavigationButtons();
+        }
+      });
+
+      function updateDescription() {
+        document.querySelector('#issue_description').value = descriptions[currentIndex];
+      }
+
+      function updateNavigationButtons() {
+        prevButton.disabled = currentIndex === 0;
+        nextButton.disabled = currentIndex === descriptions.length - 1;
+      }
+    }
+  });
+  </script>
+<% end %>
