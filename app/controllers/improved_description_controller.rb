@@ -1,30 +1,54 @@
 class ImprovedDescriptionController < ApplicationController
   # React programına subject ve description gönderir
   def improve_description
-    issue = Issue.find(params[:issue_id])
-    subject = issue.subject
-    description = issue.description
+    subject = params[:subject].to_s
+    description = params[:description].to_s
 
-    # React programına HTTP isteği yapın
-    response = RestClient.post("http://example", {
-      subject: subject,
-      description: description,
-    }.to_json, { content_type: :json, accept: :json })
+    if subject.blank? || description.blank?
+      render json: { success: false, message: "Subject and description cannot be blank." }, status: :unprocessable_entity
+      return
+    end
 
-    # React programından gelen description'ları ve etiketleri alır
-    result = JSON.parse(response.body)
-    improved_descriptions = result["descriptions"] # Birden fazla description dönmesi bekleniyor
-    tags = result["tags"]
+    begin
+      # React programına HTTP isteği yapın
+      response = RestClient.post("http://example.com", {
+        subject: subject,
+        description: description,
+      }.to_json, { content_type: :json, accept: :json })
 
-    # Kullanıcının kendi description'unu ve gelen description'ları listeye ekle
-    descriptions_list = [description] + improved_descriptions
+      # Yanıtı parse et
+      result = JSON.parse(response.body)
 
-    # Etiketleri kaydet
-    issue.tag_list.add(tags)
-    issue.save
+      # Orijinal verileri al
+      original_subject = result.dig("original", "subject") || subject
+      original_description = result.dig("original", "description") || description
+      original_tags = result.dig("original", "tags") || []
 
-    render json: { success: true, descriptions: descriptions_list }
-  rescue => e
-    render json: { success: false, message: e.message }, status: :unprocessable_entity
+      # Alternatifleri al
+      alternatives = result["alternatives"] || []
+
+      improved_descriptions = alternatives.map { |alt| alt["description"] }
+      improved_tags = alternatives.flat_map { |alt| alt["tags"] }.uniq
+
+      render json: {
+        success: true,
+        original: {
+          subject: original_subject,
+          description: original_description,
+          tags: original_tags
+        },
+        alternatives: {
+          descriptions: improved_descriptions,
+          tags: improved_tags
+        }
+      }
+      # Rails.logger.info "React API Response: #{response.body}"
+    rescue RestClient::ExceptionWithResponse => e
+      Rails.logger.error "RestClient Error: #{e.response}"
+      render json: { success: false, message: "API call failed: #{e.response}" }, status: :unprocessable_entity
+    rescue => e
+      Rails.logger.error "General Error: #{e.message}"
+      render json: { success: false, message: "An unexpected error occurred: #{e.message}" }, status: :unprocessable_entity
+    end
   end
 end

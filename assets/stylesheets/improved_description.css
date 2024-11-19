@@ -1,12 +1,13 @@
-/* Butona özel arka plan resmi eklemek için CSS */
 .custom-icon-button {
-    width: 24px; /* Butonun genişliği */
-    height: 24px; /* Butonun yüksekliği */
-    background-image: url('/plugin_assets/description_ai/images/ai.png'); /* Resmin yolu */
-    background-size: cover; /* Resmi butonun boyutuna sığdırır */
-    background-repeat: no-repeat; /* Tekrar etmesini engeller */
-    background-position: center; /* Resmi ortalar */
-    border: none; /* Buton kenarlığını kaldırır (isteğe bağlı) */
-    cursor: pointer; /* Buton imleci */
-    display: inline-block; /* Butonu satır içinde gösterir */
+    width: 24px; /* Buton genişliği */
+    height: 24px; /* Buton yüksekliği */
+    background-image: url('/plugin_assets/description_ai/images/ai.png'); /* Resim yolu */
+    background-size: cover; /* Resmi tam sığdır */
+    background-repeat: no-repeat; /* Resmin tekrarlanmasını engelle */
+    background-position: center; /* Resmi ortala */
+    border: none; /* Kenarlık kaldır */
+    cursor: pointer; /* İmleç el simgesi */
+    display: inline-block; /* Butonları satır içine al */
+    margin: 0 5px; /* Butonlar arasında boşluk bırak */
+    vertical-align: middle; /* Dikey hizalama */
 }

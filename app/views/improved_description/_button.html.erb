@@ -1,46 +1,51 @@
 <% if local_assigns[:position] == 'toolbar' %>
 <%= stylesheet_link_tag 'improved_description', plugin: :description_ai %>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const toolbar = document.querySelector(".jstElements");
-      if (toolbar) {
-        // Butonları oluştur
-        const sendButton = document.createElement("button");
-        sendButton.id = "send-description-btn";
-        sendButton.classList.add("custom-icon-button");
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toolbar = document.querySelector(".jstElements");
+    if (toolbar) {
+      // Butonları oluştur
+      const sendButton = document.createElement("button");
+      sendButton.id = "send-description-btn";
+      sendButton.classList.add("custom-icon-button");
 
-        const prevButton = document.createElement("button");
-        prevButton.id = "prev-description-btn";
-        prevButton.innerText = "<";
-        prevButton.disabled = true;
+      const prevButton = document.createElement("button");
+      prevButton.id = "prev-description-btn";
+      prevButton.innerText = "<";
+      prevButton.disabled = true;
 
-        const nextButton = document.createElement("button");
-        nextButton.id = "next-description-btn";
-        nextButton.innerText = ">";
-        nextButton.disabled = true;
+      const nextButton = document.createElement("button");
+      nextButton.id = "next-description-btn";
+      nextButton.innerText = ">";
+      nextButton.disabled = true;
 
-        // Butonları toolbara ekle
-        toolbar.appendChild(sendButton);
-        toolbar.appendChild(prevButton);
-        toolbar.appendChild(nextButton);
+      // Butonları toolbara ekle
+      toolbar.appendChild(sendButton);
+      toolbar.appendChild(prevButton);
+      toolbar.appendChild(nextButton);
 
-        // JavaScript işlemleri burada tanımlanabilir
-        let descriptions = [];
-        let currentIndex = 0;
+      // JavaScript işlemleri
+      let descriptions = [];
+      let tags = [];
+      let currentIndex = 0;
 
-        sendButton.addEventListener("click", function() {
+      sendButton.addEventListener("click", function() {
         const descriptionField = document.querySelector('#issue_description');
-        const issueId = "<%= @issue.id %>";
+        const subjectField = document.querySelector('#issue_subject');
 
-        // Description alanı boşsa uyarı ver
+        // Subject ve Description alanlarının boş olup olmadığını kontrol et
         if (!descriptionField || descriptionField.value.trim() === "") {
           alert("Description alanı boş olamaz.");
           return;
         }
 
+        if (!subjectField || subjectField.value.trim() === "") {
+          alert("Subject alanı boş olamaz.");
+          return;
+        }
+
         // İstek gönderildiğinde kullanıcının bilgilendirilmesi
         sendButton.disabled = true;
-        //sendButton.innerText = "Sending...";
 
         fetch('/improved_description/improve_description', {
           method: 'POST',
@@ -48,59 +53,76 @@
             'Content-Type': 'application/json',
             'X-CSRF-Token': '<%= form_authenticity_token %>'
           },
-          body: JSON.stringify({ issue_id: issueId, description: descriptionField.value })
+          body: JSON.stringify({
+            subject: subjectField.value,
+            description: descriptionField.value
+          })
         })
-        .then(response => response.json())
-        .then(data => {
-          sendButton.disabled = false;
-          sendButton.innerText = "Send";
-          if (data.success) {
-            descriptions = data.descriptions || []; // Geri dönen descriptions arrayini alın
-            currentIndex = 0;
-            if (descriptions.length > 0) {
-              updateDescription();
-              updateNavigationButtons();
-              alert("Description options received. Use arrows to navigate.");
+          .then(response => response.json())
+          .then(data => {
+            sendButton.disabled = false;
+  
+            if (data.success) {
+              // Orijinal veriler
+              const originalSubject = data.original?.subject || "";
+              const originalDescription = data.original?.description || "";
+              const originalTags = data.original?.tags || [];
+  
+              console.log("Original Subject:", originalSubject);
+              console.log("Original Description:", originalDescription);
+              console.log("Original Tags:", originalTags);
+  
+              // Alternatif veriler
+              descriptions = data.alternatives?.descriptions || [];
+              tags = data.alternatives?.tags || [];
+  
+              if (descriptions.length > 0) {
+                currentIndex = 0;
+                updateDescription();
+                updateNavigationButtons();
+                alert("Description options received. Use arrows to navigate.");
+              } else {
+                alert("No alternative descriptions returned.");
+              }
             } else {
-              alert("No descriptions returned.");
+              alert('Failed to improve description: ' + data.message);
             }
-          } else {
-            alert('Failed to improve description: ' + data.message);
-          }
-        })
-        .catch(error => {
-          sendButton.disabled = false;
-          sendButton.innerText = "Send";
-          console.error('Error:', error);
-          alert("An error occurred while improving the description.");
-        });
+          })
+          .catch(error => {
+            sendButton.disabled = false;
+            console.error('Fetch Error:', error);
+            alert("An error occurred while improving the description.");
+          });
       });
-
-      prevButton.addEventListener("click", function() {
+  
+      prevButton.addEventListener("click", function () {
         if (currentIndex > 0) {
           currentIndex--;
           updateDescription();
           updateNavigationButtons();
         }
       });
-
-      nextButton.addEventListener("click", function() {
+  
+      nextButton.addEventListener("click", function () {
         if (currentIndex < descriptions.length - 1) {
           currentIndex++;
           updateDescription();
           updateNavigationButtons();
         }
       });
-
+  
       function updateDescription() {
-        document.querySelector('#issue_description').value = descriptions[currentIndex];
+        const descriptionField = document.querySelector('#issue_description');
+        if (descriptionField && descriptions[currentIndex]) {
+          descriptionField.value = descriptions[currentIndex];
+        }
       }
-
+  
       function updateNavigationButtons() {
         prevButton.disabled = currentIndex === 0;
         nextButton.disabled = currentIndex === descriptions.length - 1;
       }
     }
   });
-  </script>
+</script>
 <% end %>
