@@ -11,3 +11,42 @@
     margin: 0 5px; /* Butonlar arasında boşluk bırak */
     vertical-align: middle; /* Dikey hizalama */
 }
+
+.loading-icon-button {
+    width: 24px;
+    height: 24px;
+    background-image: url('/plugin_assets/description_ai/images/loading.gif'); /* Yükleme GIF yolu */
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: none;
+    cursor: wait;
+  }
+
+
+/* Next Buton */
+.next-button {
+    height: 24px;
+    width: 36px;
+    padding: 0 10px;
+    font-size: 16px;
+    line-height: 24px;
+    color: #333;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+    display: inline-block;
+    margin-left: 5px;
+  }
+  
+  .next-button:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .next-button:disabled {
+    background-color: #dcdcdc;
+    color: #aaa;
+    cursor: not-allowed;
+  }

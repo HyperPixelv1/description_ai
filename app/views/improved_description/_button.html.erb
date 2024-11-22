@@ -1,7 +1,7 @@
 <% if local_assigns[:position] == 'toolbar' %>
 <%= stylesheet_link_tag 'improved_description', plugin: :description_ai %>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     const toolbar = document.querySelector(".jstElements");
     if (toolbar) {
       // Butonları oluştur
@@ -9,43 +9,41 @@
       sendButton.id = "send-description-btn";
       sendButton.classList.add("custom-icon-button");
 
-      const prevButton = document.createElement("button");
-      prevButton.id = "prev-description-btn";
-      prevButton.innerText = "<";
-      prevButton.disabled = true;
-
       const nextButton = document.createElement("button");
       nextButton.id = "next-description-btn";
       nextButton.innerText = ">";
-      nextButton.disabled = true;
+      nextButton.classList.add("next-button");
+      nextButton.disabled = false;
 
       // Butonları toolbara ekle
       toolbar.appendChild(sendButton);
-      toolbar.appendChild(prevButton);
       toolbar.appendChild(nextButton);
 
       // JavaScript işlemleri
-      let descriptions = [];
-      let tags = [];
       let currentIndex = 0;
 
-      sendButton.addEventListener("click", function() {
+      // Send butonuna tıklama işlemi
+      sendButton.addEventListener("click", function () {
         const descriptionField = document.querySelector('#issue_description');
         const subjectField = document.querySelector('#issue_subject');
 
-        // Subject ve Description alanlarının boş olup olmadığını kontrol et
         if (!descriptionField || descriptionField.value.trim() === "") {
-          alert("Description alanı boş olamaz.");
+          alert("Description field cannot be empty.");
           return;
         }
 
         if (!subjectField || subjectField.value.trim() === "") {
-          alert("Subject alanı boş olamaz.");
+          alert("Subject field cannot be empty.");
           return;
         }
 
-        // İstek gönderildiğinde kullanıcının bilgilendirilmesi
+        // İstek gönderilirken durumu yansıt
+        const originalClass = sendButton.className;
         sendButton.disabled = true;
+        // Yükleme simgesini gösteren sınıfı ekle
+        sendButton.classList.remove("custom-icon-button");
+        sendButton.classList.add("loading-icon-button");
+        
 
         fetch('/improved_description/improve_description', {
           method: 'POST',
@@ -58,69 +56,74 @@
             description: descriptionField.value
           })
         })
-          .then(response => response.json())
+          .then(response =>  response.json())
           .then(data => {
             sendButton.disabled = false;
-  
+            sendButton.className = originalClass;
             if (data.success) {
-              // Orijinal veriler
-              const originalSubject = data.original?.subject || "";
-              const originalDescription = data.original?.description || "";
-              const originalTags = data.original?.tags || [];
-  
-              console.log("Original Subject:", originalSubject);
-              console.log("Original Description:", originalDescription);
-              console.log("Original Tags:", originalTags);
-  
-              // Alternatif veriler
-              descriptions = data.alternatives?.descriptions || [];
-              tags = data.alternatives?.tags || [];
-  
-              if (descriptions.length > 0) {
-                currentIndex = 0;
-                updateDescription();
-                updateNavigationButtons();
-                alert("Description options received. Use arrows to navigate.");
-              } else {
-                alert("No alternative descriptions returned.");
-              }
+              let issues = [data.original, ...data.alternatives]
+              // Sağ ok butonu
+              nextButton.addEventListener("click", function (event) {
+                event.preventDefault();
+                currentIndex = updateNextIssue(currentIndex, issues);
+              });
+
+              // Gelen önerilerin ilkini görüntülüyoruz
+              // subject, description ve tags güncellenecek
+              // orjinal + alternatif issue önerileri
+              currentIndex = updateNextIssue(0, issues)
+              alert("Tags updated successfully! Use the arrows to navigate.");
             } else {
               alert('Failed to improve description: ' + data.message);
             }
           })
           .catch(error => {
             sendButton.disabled = false;
+            sendButton.className = originalClass;
             console.error('Fetch Error:', error);
             alert("An error occurred while improving the description.");
           });
       });
-  
-      prevButton.addEventListener("click", function () {
-        if (currentIndex > 0) {
-          currentIndex--;
-          updateDescription();
-          updateNavigationButtons();
-        }
-      });
-  
-      nextButton.addEventListener("click", function () {
-        if (currentIndex < descriptions.length - 1) {
-          currentIndex++;
-          updateDescription();
-          updateNavigationButtons();
-        }
-      });
-  
-      function updateDescription() {
-        const descriptionField = document.querySelector('#issue_description');
-        if (descriptionField && descriptions[currentIndex]) {
-          descriptionField.value = descriptions[currentIndex];
-        }
+
+      function updateNextIssue(_currentIndex, _issues){
+        nextIndex = _currentIndex + 1
+        issue = _issues[_currentIndex % _issues.length] 
+        updateDesc(issue.description)
+        updateTags(issue.tags)
+        nextButton.innerText = `${(_currentIndex % _issues.length)+1}/${_issues.length} >`
+        return nextIndex 
       }
-  
-      function updateNavigationButtons() {
-        prevButton.disabled = currentIndex === 0;
-        nextButton.disabled = currentIndex === descriptions.length - 1;
+
+      function updateDesc(newText){
+        const descriptionField = document.querySelector('#issue_description');
+        if (!descriptionField) {
+          console.warn("'issue_description' ID'li html elemanı bulunamadı!")
+          return
+        }
+        
+        descriptionField.value = newText || "";
+      }
+
+      function updateTags(newTags){
+        const tagField = $('#issue_tag_list'); // Select2 alanı
+        
+        if (!tagField) {
+          console.warn("'issue_tag_list' ID'li html elemanı bulunamadı!")
+          return 
+        }
+        
+        // Mevcut seçimleri temizle
+        tagField.empty(); 
+        newTags.forEach(tag => {
+          const newOption = new Option(tag, tag, true, true);
+          tagField.append(newOption);
+        });
+        tagField.trigger("change");
+
+        if (!tagField.hasClass("select2-hidden-accessible")) {
+          // Select2 özelliklerini uygula
+          tagField.select2(); 
+        }
       }
     }
   });
